@@ -18,24 +18,30 @@ A Grécia moderna, por sua vez, conquistou a independência do Império Otomano 
 A Grécia, portanto, não é apenas um país de grande beleza natural; ela representa um dos pilares fundamentais da história humana. Seu legado permanece presente na linguagem, na arte, na política, na ciência, na filosofia e no pensamento crítico que sustentam as sociedades modernas. Estudar a Grécia é compreender um pouco de nós mesmos, pois muito do que pensamos, valorizamos e buscamos encontra raízes profundas naquela antiga civilização que floresceu há mais de dois milênios e continua viva no imaginário coletivo da humanidade.
 """
 
-splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=50)
-parts = splitter.create_documents([long_text])
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=300,  # Tamanho máximo de cada chunk (em caracteres)
+    chunk_overlap=50  # Quantidade de caracteres que se sobrepõem entre chunks consecutivos
+)
+parts = splitter.create_documents([long_text])  # Divide o texto longo em uma lista de documentos menores
 
-llm = ChatOpenAI(model="gpt-5-nano", temperature=0)
+llm = ChatOpenAI(
+    model="gpt-5-nano",  # Nome do modelo de linguagem a ser utilizado
+    temperature=0  # Controla a aleatoriedade das respostas (0.0 = determinístico, 1.0 = muito criativo)
+)
 
 # LCEL(langchain express language) map stage: summarize each chunk
-map_prompt = PromptTemplate.from_template("Write a concise summary of the following text:\n{context}")
+map_prompt = PromptTemplate.from_template("Write a concise summary of the following text:\n{context}")  # Cria um template de prompt a partir de uma string
 map_chain = map_prompt | llm | StrOutputParser()
 
-prepare_map_inputs = RunnableLambda(lambda docs: [{"context": d.page_content} for d in docs])
+prepare_map_inputs = RunnableLambda(lambda docs: [{"context": d.page_content} for d in docs])  # docs: Lista de documentos a serem transformados em dicionários com a chave "context"
 map_stage = prepare_map_inputs | map_chain.map()
 
 # LCEL reduce stage: combine summaries into one final summary
-reduce_prompt = PromptTemplate.from_template("Combine the following summaries into a single concise summary:\n{context}")
+reduce_prompt = PromptTemplate.from_template("Combine the following summaries into a single concise summary:\n{context}")  # Cria um template de prompt a partir de uma string
 reduce_chain = reduce_prompt | llm | StrOutputParser()
 
-prepare_reduce_input = RunnableLambda(lambda summaries: {"context": "\n".join(summaries)})
+prepare_reduce_input = RunnableLambda(lambda summaries: {"context": "\n".join(summaries)})  # summaries: Lista de strings (resumos) a serem combinadas em um único dicionário
 pipeline = map_stage | prepare_reduce_input | reduce_chain
-result = pipeline.invoke(parts)
+result = pipeline.invoke(parts)  # Invoca o pipeline com a lista de documentos divididos
 
 print(result)

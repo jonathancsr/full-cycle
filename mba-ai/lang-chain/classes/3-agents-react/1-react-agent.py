@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # expression é a mensagem que o agente vai interpretar, pode se criar de forma mais robusta para não deixar brechas
-@tool("calculator", return_direct=True)
-def calculator(expression: str) -> str:
+@tool("calculator", return_direct=True)  # "calculator": Nome da ferramenta, return_direct=True: Retorna o resultado diretamente sem processamento adicional
+def calculator(expression: str) -> str:  # expression: Expressão matemática a ser avaliada (ex: "10 + 10")
     """Evaluate a simple mathematical expression and returns the result."""
     try:
         result = eval(expression) # be careful with this because it's a security risk
@@ -15,8 +15,8 @@ def calculator(expression: str) -> str:
         return f"Error: {e}"
     return str(result)
 
-@tool("web_search_mock")
-def web_search_mock(query: str) -> str:
+@tool("web_search_mock")  # "web_search_mock": Nome da ferramenta
+def web_search_mock(query: str) -> str:  # query: Consulta de busca a ser processada
     """Mock web search function tool. Returns a hardcoded result."""
     data ={
         "Brazil": "Brasília",
@@ -34,7 +34,10 @@ def web_search_mock(query: str) -> str:
     return "I don't know the capital of that country"
 
 
-llm = ChatOpenAI(model="gpt-4o-mini", disable_streaming=True)
+llm = ChatOpenAI(
+    model="gpt-4o-mini",  # Nome do modelo de linguagem a ser utilizado
+    disable_streaming=True  # Desabilita o streaming de respostas (retorna resposta completa de uma vez)
+)
 tools = [calculator, web_search_mock]
 
 prompt = PromptTemplate.from_template(
@@ -64,18 +67,23 @@ prompt = PromptTemplate.from_template(
     Question: {input}
     Thought:{agent_scratchpad}
     """
+)  # Cria um template de prompt a partir de uma string com placeholders para tools, tool_names, input e agent_scratchpad
+
+agent_chain = create_react_agent(
+    llm,  # Modelo de linguagem a ser usado pelo agente
+    tools=tools,  # Lista de ferramentas disponíveis para o agente usar
+    prompt=prompt,  # Template de prompt que define o comportamento do agente
+    stop_sequence=False  # Se True, para a execução quando encontra uma sequência específica
+)
+agent_executor = AgentExecutor.from_agent_and_tools(
+    agent=agent_chain,  # Chain do agente criado com create_react_agent
+    tools=tools,  # Lista de ferramentas disponíveis para o agente usar
+    verbose=True,  # Se True, imprime informações detalhadas durante a execução
+    handle_parsing_errors="Invalid format. Either provide an Action with Action Input or Final Answer.",  # Mensagem de erro a ser retornada quando há erro de parsing
 )
 
-agent_chain = create_react_agent(llm, tools=tools, prompt=prompt, stop_sequence=False)
-agent_executor = AgentExecutor.from_agent_and_tools(
-    agent=agent_chain,
-    tools=tools,
-    verbose=True,
-    handle_parsing_errors="Invalid format. Either provide an Action with Action Input or Final Answer.",
-    )
 
 
-
-print(agent_executor.invoke({"input": "What is the capital of France?"}))
-print(agent_executor.invoke({"input": "How much is 10 + 10?"}))
-print(agent_executor.invoke({"input": "What is the capital of Iran?"}))
+print(agent_executor.invoke({"input": "What is the capital of France?"}))  # Invoca o executor com a pergunta de entrada
+print(agent_executor.invoke({"input": "How much is 10 + 10?"}))  # Invoca o executor com a pergunta de entrada
+print(agent_executor.invoke({"input": "What is the capital of Iran?"}))  # Invoca o executor com a pergunta de entrada

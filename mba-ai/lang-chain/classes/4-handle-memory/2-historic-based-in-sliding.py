@@ -11,17 +11,20 @@ from langchain_core.messages import trim_messages
 load_dotenv()
 
 prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are a helpful assistant that answers with a short joke when possible."),
-    MessagesPlaceholder(variable_name="history"),
-    ("human", "{input}"),
+    ("system", "You are a helpful assistant that answers with a short joke when possible."),  # Mensagem do sistema que define o comportamento do assistente
+    MessagesPlaceholder(variable_name="history"),  # variable_name: Nome da variável que será substituída pelo histórico de mensagens
+    ("human", "{input}"),  # Mensagem do usuário com placeholder para a entrada
 ])
 
-llm = ChatOpenAI(model="gpt-5-nano", temperature=0.9)
+llm = ChatOpenAI(
+    model="gpt-5-nano",  # Nome do modelo de linguagem a ser utilizado
+    temperature=0.9  # Controla a aleatoriedade das respostas (0.0 = determinístico, 1.0 = muito criativo)
+)
 
-def prepare_inputs(payload: str) -> dict:
+def prepare_inputs(payload: str) -> dict:  # payload: Dicionário contendo "raw_history" e "input" com o histórico e mensagem do usuário
     raw_history = payload.get("raw_history", [])
     trimmed = trim_messages(
-        raw_history,
+        raw_history,  # Lista de mensagens do histórico a serem reduzidas
         token_counter=len,              # Função usada para contar "tokens", aqui contando o número de mensagens na lista (poderia ser quantidade de tokens, mas está como len)
         max_tokens=2,                   # Quantidade máxima de mensagens (ou "tokens" conforme a função acima) que serão mantidas no histórico
         strategy="last",                # Estratégia para selecionar as mensagens: "last" pega as mensagens mais recentes do histórico
@@ -32,12 +35,12 @@ def prepare_inputs(payload: str) -> dict:
     return {"input": payload.get("input", ""), "history": trimmed}
 
 
-prepare = RunnableLambda[str, dict](prepare_inputs)
+prepare = RunnableLambda[str, dict](prepare_inputs)  # Converte a função prepare_inputs em um Runnable do LangChain
 chain = prepare | prompt | llm
 
 session_store: dict[str, InMemoryChatMessageHistory] = {}
 
-def get_session_history(session_id: str) -> InMemoryChatMessageHistory:
+def get_session_history(session_id: str) -> InMemoryChatMessageHistory:  # session_id: Identificador único da sessão de conversa
     if session_id not in session_store:
         session_store[session_id] = InMemoryChatMessageHistory()
     return session_store[session_id]
@@ -45,24 +48,33 @@ def get_session_history(session_id: str) -> InMemoryChatMessageHistory:
 
 
 conversational_chain = RunnableWithMessageHistory(
-    chain,
-    get_session_history,
-    input_messages_key="input",
-    history_messages_key="raw_history"
+    chain,  # Chain que será executada com histórico de mensagens
+    get_session_history,  # Função que retorna o histórico de mensagens para uma sessão específica
+    input_messages_key="input",  # Chave no dicionário de entrada que contém a mensagem do usuário
+    history_messages_key="raw_history"  # Chave no dicionário de entrada que contém o histórico de mensagens antes do trimming
 )
 
-config = {"configurable": {"session_id": "demo-session"}}
+config = {"configurable": {"session_id": "demo-session"}}  # Configuração contendo o ID da sessão para manter o histórico
 
 # Interactions
-response1 = conversational_chain.invoke({"input": "Hello, my name is Jonathan. Reply only with 'Ok'and do not mention my name"}, config=config)
+response1 = conversational_chain.invoke(
+    {"input": "Hello, my name is Jonathan. Reply only with 'Ok'and do not mention my name"},  # Dicionário contendo a mensagem de entrada do usuário
+    config=config  # Configuração contendo o ID da sessão
+)
 print("Assistant : ", response1.content)
 print("-"*30)
 
-response2 = conversational_chain.invoke({"input": "Tell me a one-sentence fun fact. Do not mention my name."}, config=config)
+response2 = conversational_chain.invoke(
+    {"input": "Tell me a one-sentence fun fact. Do not mention my name."},  # Dicionário contendo a mensagem de entrada do usuário
+    config=config  # Configuração contendo o ID da sessão
+)
 print("Assistant : ", response2.content)
 print("-"*30)
 
-response3 = conversational_chain.invoke({"input": "What is my name?"}, config=config)
+response3 = conversational_chain.invoke(
+    {"input": "What is my name?"},  # Dicionário contendo a mensagem de entrada do usuário
+    config=config  # Configuração contendo o ID da sessão
+)
 print("Assistant : ", response3.content)
 print("-"*30)
 

@@ -17,14 +17,22 @@ A Grécia, portanto, não é apenas um país de grande beleza natural; ela repre
 """
 
 splitter = RecursiveCharacterTextSplitter(
-    chunk_size=200, chunk_overlap=70
+    chunk_size=200,  # Tamanho máximo de cada chunk (em caracteres)
+    chunk_overlap=70  # Quantidade de caracteres que se sobrepõem entre chunks consecutivos
 )
 
-parts = splitter.create_documents([long_text])
+parts = splitter.create_documents([long_text])  # Divide o texto longo em uma lista de documentos menores
 
 # É importante para diminuirmos o numero de tokens assim diminuindo o custo
-llm = ChatOpenAI(model="gpt-5-nano", temperature=0)
-chain_summarize = load_summarize_chain(llm, chain_type="stuff", verbose=False)
-result = chain_summarize.invoke({"input_documents": parts})
+llm = ChatOpenAI(
+    model="gpt-5-nano",  # Nome do modelo de linguagem a ser utilizado
+    temperature=0  # Controla a aleatoriedade das respostas (0.0 = determinístico, 1.0 = muito criativo)
+)
+chain_summarize = load_summarize_chain(
+    llm,  # Modelo de linguagem a ser usado para sumarização
+    chain_type="stuff",  # Tipo de chain: "stuff" envia todos os documentos de uma vez
+    verbose=False  # Se True, imprime informações detalhadas durante a execução
+)
+result = chain_summarize.invoke({"input_documents": parts})  # Invoca a chain de sumarização com os documentos divididos
 
 print(result["output_text"])
